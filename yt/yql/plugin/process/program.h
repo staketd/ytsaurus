@@ -4,6 +4,7 @@
 #include "plugin_service.h"
 
 #include <yt/yql/plugin/bridge/plugin.h>
+#include <yt/yql/plugin/config.h>
 
 #include <yt/yt/core/bus/tcp/config.h>
 #include <yt/yt/core/bus/tcp/server.h>
@@ -30,7 +31,7 @@ class TYqlPluginProgram
     : public virtual TProgram
     , public TProgramPdeathsigMixin
     , public TProgramSetsidMixin
-    , public TProgramConfigMixin<TYqlPluginProcessInternalConfig>
+    , public TProgramConfigMixin<TProcessYqlPluginInternalConfig>
 {
 public:
     TYqlPluginProgram()
@@ -38,8 +39,7 @@ public:
         , TProgramPdeathsigMixin(Opts_)
         , TProgramSetsidMixin(Opts_)
         , TProgramConfigMixin(Opts_)
-    {
-    }
+    { }
 
 protected:
     void DoRun() override
@@ -62,32 +62,28 @@ protected:
 
         NProfiling::EnablePerfEventCounterProfiling();
 
-        auto ControlQueue_ = New<NConcurrency::TActionQueue>("YqlPluginServiceControl");
-        auto ControlInvoker_ = ControlQueue_->GetInvoker();
+        auto controlQueue_ = New<NConcurrency::TActionQueue>("YqlPluginServiceControl");
+        auto controlInvoker_ = controlQueue_->GetInvoker();
 
         YT_VERIFY(config->BusServer->UnixDomainSocketPath);
 
-        TYqlPluginOptions options{
-            .SingletonsConfig = config->PluginOptions->SingletonsConfig,
-            .GatewayConfig = config->PluginOptions->GatewayConfig,
-            .DqGatewayConfig = config->PluginOptions->DqGatewayConfig.value_or(NYson::TYsonString()),
-            .DqManagerConfig = config->PluginOptions->DqManagerConfig.value_or(NYson::TYsonString()),
-            .FileStorageConfig = config->PluginOptions->FileStorageConfig,
-            .OperationAttributes = config->PluginOptions->OperationAttributes,
-            .Libraries = config->PluginOptions->Libraries,
-            .YTTokenPath = config->PluginOptions->YTTokenPath,
-            .LogBackend = NLogging::CreateArcadiaLogBackend(NLogging::TLogger("YqlPlugin")),
-            .YqlPluginSharedLibrary = config->PluginOptions->YqlPluginSharedLibrary,
-        };
+        auto options = ConvertToOptions(
+            config->PluginConfig,
+            NYson::ConvertToYsonString(config->SingletonsConfig),
+            NLogging::CreateArcadiaLogBackend(NLogging::TLogger("YqlPlugin")),
+            config->MaxSupportedYqlVersion,
+            false);
 
-        auto YqlPlugin = CreateBridgeYqlPlugin(std::move(options));
-        auto YqlPluginService = CreateYqlPluginService(ControlInvoker_, std::move(YqlPlugin));
-        auto RpcServer = NRpc::NBus::CreateBusServer(NBus::CreateBusServer(config->BusServer));
+        auto yqlPlugin = CreateBridgeYqlPlugin(std::move(options));
+        yqlPlugin->Start();
 
-        RpcServer->RegisterService(YqlPluginService);
+        auto yqlPluginService = CreateYqlPluginService(controlInvoker_, std::move(yqlPlugin));
+        auto rpcServer = NRpc::NBus::CreateBusServer(NBus::CreateBusServer(config->BusServer));
 
-        RpcServer->Configure(config->RpcServer);
-        RpcServer->Start();
+        rpcServer->RegisterService(yqlPluginService);
+
+        rpcServer->Configure(config->RpcServer);
+        rpcServer->Start();
 
         Sleep(TDuration::Max());
     }

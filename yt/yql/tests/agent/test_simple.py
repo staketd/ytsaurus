@@ -650,7 +650,11 @@ class TestExecutionModesYql(TestQueriesYqlSimpleBase):
             self._run_simple_query("select * from `//tmp/t1`", settings={"execution_mode": 42})
 
 
+<<<<<<< HEAD
 class TestYqlPlugin(TestQueriesYqlSimpleBase):
+=======
+class TestYqlPlugin(TestQueriesYqlBase):
+>>>>>>> Refactor plugin implementation; Prepare tests; Extract configs
     NUM_TEST_PARTITIONS = 4
 
     @authors("mpereskokova")

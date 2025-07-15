@@ -1,14 +1,16 @@
 #pragma once
 
+#include "public.h"
+
 #include <yt/yt/core/logging/log.h>
 
 namespace NYT::NYqlPlugin {
 namespace NProcess {
 
-DECLARE_REFCOUNTED_STRUCT(TYqlProcessPluginOptions)
-DECLARE_REFCOUNTED_STRUCT(TYqlPluginProcessInternalConfig)
+DECLARE_REFCOUNTED_STRUCT(TProcessYqlPluginInternalConfig)
 
-YT_DEFINE_GLOBAL(const NLogging::TLogger, YqlProcessPluginLogger, "YqlProcessPlugin");
+YT_DEFINE_GLOBAL(const NLogging::TLogger, ProcessYqlPluginLogger, "ProcessYqlPlugin");
+YT_DEFINE_GLOBAL(const NLogging::TLogger, YqlExecutorProcessLogger, "YqlExecutorProcess");
 
 } // namespace NProcess
 } // namespace NYT::NYqlPlugin

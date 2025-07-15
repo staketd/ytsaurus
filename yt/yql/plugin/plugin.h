@@ -1,5 +1,7 @@
 #pragma once
 
+#include "public.h"
+
 #include <yt/yql/plugin/bridge/interface.h>
 #include <yt/yt/core/ytree/ephemeral_node_factory.h>
 
@@ -17,8 +19,6 @@ namespace NYT::NYqlPlugin {
 ////////////////////////////////////////////////////////////////////////////////
 
 using TQueryId = TGuid;
-
-////////////////////////////////////////////////////////////////////////////////
 
 struct TYqlPluginOptions
 {
@@ -39,6 +39,8 @@ struct TYqlPluginOptions
     std::optional<TString> YqlPluginSharedLibrary;
 
     std::string MaxYqlLangVersion;
+
+    bool StartDqManager;
 };
 
 struct TYqlPluginDynamicConfig
@@ -116,6 +118,15 @@ struct IYqlPlugin
 
     virtual ~IYqlPlugin() = default;
 };
+
+////////////////////////////////////////////////////////////////////////////////
+
+TYqlPluginOptions ConvertToOptions(
+    TYqlPluginConfigPtr config,
+    NYson::TYsonString singletonsConfigString,
+    THolder<TLogBackend> logBackend,
+    std::string maxSupportedYqlVersion,
+    bool startDqManager = false);
 
 ////////////////////////////////////////////////////////////////////////////////
 

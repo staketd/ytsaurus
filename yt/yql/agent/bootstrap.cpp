@@ -19,6 +19,7 @@
 
 #include <yt/yt/library/monitoring/http_integration.h>
 #include <yt/yt/library/monitoring/monitoring_manager.h>
+#include <yt/yt/library/server_program/config.h>
 
 #include <yt/yt/ytlib/orchid/orchid_service.h>
 
@@ -316,9 +317,9 @@ void TBootstrap::OnDynamicConfigChanged(
         ConvertToYsonString(newConfig, EYsonFormat::Text));
 }
 
-const NServer::TNativeServerBootstrapConfigPtr TBootstrap::GetNativeServerBootstrapConfig() const 
+const NApi::NNative::TConnectionCompoundConfigPtr TBootstrap::GetClusterConnectionConfig() const
 {
-    return Config_;
+    return Config_->ClusterConnection;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

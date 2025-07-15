@@ -1,77 +1,32 @@
 #pragma once
 
 #include "private.h"
-#include "public.h"
-
-#include <yt/yt/core/logging/config.h>
-#include <yt/yt/library/server_program/config.h>
-#include <yt/yt/server/lib/misc/config.h>
 
 #include <yt/yql/plugin/plugin.h>
+#include <yt/yql/plugin/public.h>
 
-namespace NYT::NYqlPlugin {
-namespace NProcess {
+#include <yt/yt/server/lib/misc/config.h>
 
-struct TYqlProcessPluginConfig
-    : public NYTree::TYsonStruct
-{
+#include <yt/yt/library/server_program/config.h>
 
-    bool Enabled;
-    int SlotsCount;
-    TString SlotsRootPath;
-
-    TDuration CheckProcessActiveDelay;
-
-    NLogging::TLogManagerConfigPtr LogManagerTemplate;
-
-    REGISTER_YSON_STRUCT(TYqlProcessPluginConfig);
-
-    static void Register(TRegistrar registrar);
-};
-
-DEFINE_REFCOUNTED_TYPE(TYqlProcessPluginConfig)
-
-////////////////////////////////////////////////////////////////////////////////
-struct TYqlProcessPluginOptions
-    : public NYTree::TYsonStruct
-{
-    NYson::TYsonString SingletonsConfig;
-    NYson::TYsonString GatewayConfig;
-    std::optional<NYson::TYsonString> DqGatewayConfig;
-    std::optional<NYson::TYsonString> DqManagerConfig;
-    NYson::TYsonString FileStorageConfig;
-    NYson::TYsonString OperationAttributes;
-    NYson::TYsonString Libraries;
-
-    TString YTTokenPath;
-
-    std::optional<TString> YqlPluginSharedLibrary;
-
-    REGISTER_YSON_STRUCT(TYqlProcessPluginOptions);
-
-    static void Register(TRegistrar registrar);
-};
-
-DEFINE_REFCOUNTED_TYPE(TYqlProcessPluginOptions)
+namespace NYT::NYqlPlugin::NProcess {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TYqlPluginProcessInternalConfig
+struct TProcessYqlPluginInternalConfig
     : public NServer::TNativeServerBootstrapConfig
     , public TServerProgramConfig
 {
-
     int SlotIndex;
+    TYqlPluginConfigPtr PluginConfig;
+    TString MaxSupportedYqlVersion;
+    TSingletonsConfigPtr SingletonsConfig;
 
-    TYqlProcessPluginOptionsPtr PluginOptions;
-
-    REGISTER_YSON_STRUCT(TYqlPluginProcessInternalConfig);
+    REGISTER_YSON_STRUCT(TProcessYqlPluginInternalConfig);
 
     static void Register(TRegistrar registrar);
 };
 
-DEFINE_REFCOUNTED_TYPE(TYqlPluginProcessInternalConfig)
+DEFINE_REFCOUNTED_TYPE(TProcessYqlPluginInternalConfig)
 
-} // namespace NProcess
-
-} // namespace NYT::NYqlPlugin
+} // namespace NYT::NYqlPlugin::NProcess
