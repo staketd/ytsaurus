@@ -409,7 +409,7 @@ public:
             }
             FuncRegistry_->SetSystemModulePaths(systemModules);
 
-            if (DqManagerConfig_) {
+            if (DqManagerConfig_ && options.StartDqManager) {
                 DqManagerConfig_->FileStorage = FileStorage_;
                 DqManager_ = New<TDqManager>(DqManagerConfig_);
             }
@@ -701,6 +701,7 @@ public:
     }
 
     TClustersResult GetUsedClusters(
+        TQueryId /*queryId*/,
         TString queryText,
         TYsonString settings,
         std::vector<TQueryFile> files) noexcept override
