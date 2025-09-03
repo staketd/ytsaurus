@@ -25,6 +25,7 @@
 #include <yt/yt/core/net/config.h>
 
 #include <yt/yql/plugin/bridge/plugin.h>
+#include <yt/yql/plugin/process/plugin.h>
 
 namespace NYT::NYqlAgent {
 
@@ -177,6 +178,7 @@ class TYqlAgent
 {
 public:
     TYqlAgent(
+        TBootstrap* bootstrap,
         TSingletonsConfigPtr singletonsConfig,
         TYqlAgentConfigPtr yqlAgentConfig,
         TYqlAgentDynamicConfigPtr dynamicConfig,
@@ -277,33 +279,27 @@ public:
         NYql::FormatLangVersion(std::min(NYql::GetMaxReleasedLangVersion(), maxYqlLangVersion), buffer, defaultVersionStringBuf);
         DefaultYqlUILangVersion_ = defaultVersionStringBuf;
         YT_LOG_INFO("Deafult YQL version for UI is set (Version: %v)", DefaultYqlUILangVersion_);
-
-
-        NYqlPlugin::TYqlPluginOptions options{
-            .SingletonsConfig = singletonsConfigString,
-            .GatewayConfig = ConvertToYsonString(Config_->GatewayConfig),
-            .DqGatewayConfig = Config_->EnableDQ ? ConvertToYsonString(Config_->DQGatewayConfig) : TYsonString(),
-            .YtflowGatewayConfig = ConvertToYsonString(Config_->YtflowGatewayConfig),
-            .DqManagerConfig = Config_->EnableDQ ? ConvertToYsonString(Config_->DQManagerConfig) : TYsonString(),
-            .FileStorageConfig = ConvertToYsonString(Config_->FileStorageConfig),
-            .OperationAttributes = ConvertToYsonString(Config_->OperationAttributes),
-            .Libraries = ConvertToYsonString(Config_->Libraries),
-            .YTTokenPath = Config_->YTTokenPath,
-            .UIOrigin = Config_->UIOrigin,
-            .LogBackend = NYT::NLogging::CreateArcadiaLogBackend(TLogger("YqlPlugin")),
-            .YqlPluginSharedLibrary = Config_->YqlPluginSharedLibrary,
-            .MaxYqlLangVersion = MaxSupportedYqlVersion_,
-        };
+        auto options = NYqlPlugin::ConvertToOptions(
+            Config_, 
+            singletonsConfigString, 
+            NYT::NLogging::CreateArcadiaLogBackend(TLogger("YqlPlugin")), 
+            MaxSupportedYqlVersion_);
 
         // NB: under debug build this method does not fit in regular fiber stack
         // due to python udf loading
         using TSignature = void(NYqlPlugin::TYqlPluginOptions);
         auto coroutine = TCoroutine<TSignature>(
-            BIND([this](
+            BIND([this, bootstrap, maxVersionStringBuf](
                 TCoroutine<TSignature>& /*self*/,
                 NYqlPlugin::TYqlPluginOptions options
             ) {
-                YqlPlugin_ = NYqlPlugin::CreateYqlPlugin(std::move(options));
+                YqlPlugin_ = Config_->ProcessPluginConfig->Enabled 
+                    ? NYqlPlugin::NProcess::CreateProcessYqlPlugin(
+                        bootstrap, 
+                        Config_, 
+                        YqlAgentProfiler().WithPrefix("/yql_plugin"),
+                        TString(maxVersionStringBuf))
+                    : NYqlPlugin::CreateBridgeYqlPlugin(std::move(options));
             }),
             EExecutionStackKind::Large);
 
@@ -319,9 +315,10 @@ public:
     void Stop() override
     { }
 
-    NYTree::IMapNodePtr GetOrchidNode() const override
+    virtual NYTree::IYPathServicePtr CreateOrchidService() const override 
     {
-        return GetEphemeralNodeFactory()->CreateMap();
+        auto producer = BIND_NO_PROPAGATE(&TYqlAgent::BuildOrchid, MakeStrong(this));
+        return IYPathService::FromProducer(producer);
     }
 
     void OnDynamicConfigChanged(
@@ -472,7 +469,7 @@ private:
                 });
             }
 
-            auto clustersResult = YqlPlugin_->GetUsedClusters(query, settings, files);
+            auto clustersResult = YqlPlugin_->GetUsedClusters(queryId, query, settings, files);
             if (clustersResult.YsonError) {
                 auto error = ConvertTo<TError>(TYsonString(*clustersResult.YsonError));
                 THROW_ERROR error;
@@ -602,12 +599,20 @@ private:
         }
         // TODO(max42): original YSON tends to unnecessary pretty.
         *((&yqlResponse)->*mutableProtoFieldAccessor)() = *rawField;
-    };
+    }
+
+    void BuildOrchid(NYson::IYsonConsumer* consumer) const
+    {
+        BuildYsonFluently(consumer).BeginMap()
+            .Item("yql_plugin").Value(YqlPlugin_->GetOrchidNode())
+        .EndMap();
+    }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 
 IYqlAgentPtr CreateYqlAgent(
+    TBootstrap* bootstrap,
     TSingletonsConfigPtr singletonsConfig,
     TYqlAgentConfigPtr config,
     TYqlAgentDynamicConfigPtr dynamicConfig,
@@ -617,6 +622,7 @@ IYqlAgentPtr CreateYqlAgent(
     TString agentId)
 {
     return New<TYqlAgent>(
+        bootstrap,
         std::move(singletonsConfig),
         std::move(config),
         std::move(dynamicConfig),
