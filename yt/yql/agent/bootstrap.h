@@ -9,6 +9,7 @@
 #include <yt/yt/ytlib/api/native/public.h>
 
 #include <yt/yt/library/monitoring/public.h>
+#include <yt/yt/library/server_program/public.h>
 
 #include <yt/yt/ytlib/node_tracker_client/public.h>
 
@@ -39,6 +40,8 @@ public:
     ~TBootstrap();
 
     void Run();
+
+    const NApi::NNative::TConnectionCompoundConfigPtr GetClusterConnectionConfig() const;
 
 private:
     TAgentId AgentId_;

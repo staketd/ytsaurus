@@ -1547,3 +1547,18 @@ class TestGetQueryTrackerInfoWithInvalidMaxYqlVersionRpcProxy(TestGetQueryTracke
 
     DRIVER_BACKEND = "rpc"
     ENABLE_MULTIDAEMON = True
+
+
+@authors("staketd")
+class TestYqlAgentWithProcesses(TestYqlAgent):
+    YQL_SUBPROCESSES_COUNT = 8
+
+
+@authors("staketd")
+class TestYqlAgentDynConfigWithProcesses(TestYqlAgentDynConfig):
+    YQL_SUBPROCESSES_COUNT = 8
+
+
+@authors("staketd")
+class TestMaxYqlVersionConfigAttrWithProcesses(TestMaxYqlVersionConfigAttr):
+    YQL_SUBPROCESSES_COUNT = 8
