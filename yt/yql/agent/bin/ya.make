@@ -12,7 +12,6 @@ SRCS(
 
 PEERDIR(
     yt/yql/agent
-    yt/yql/plugin/process
 )
 
 END()

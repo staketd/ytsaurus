@@ -51,6 +51,7 @@ PEERDIR(
     yt/yt/library/monitoring
 
     yt/yql/plugin/bridge
+    yt/yql/plugin/process
 
     yql/essentials/public/langver
     yql/essentials/public/result_format
