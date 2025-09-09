@@ -99,12 +99,6 @@ public:
         // process in this call and then use it in Run() as well.
         TYqlExecutorProcessPtr acquiredProcess = AcquireSlotForQuery(queryId);
 
-        if (!acquiredProcess) {
-            return TClustersResult{
-                .YsonError = ConvertToYsonString(TError("No available slots to acquire")).ToString()
-            };
-        }
-
         YT_LOG_INFO("Acquired slot for query (SlotIndex: %v, QueryId: %v)", acquiredProcess->SlotIndex(), queryId);
 
         return acquiredProcess->GetUsedClusters(queryId, queryText, settings, files);
@@ -155,7 +149,7 @@ public:
         if (!pluginProcessOrError.IsOK()) {
             return TQueryResult{
                 .YsonError = ConvertToYsonString<TError>(pluginProcessOrError).ToString()
-                };
+            };
         }
 
         auto pluginProcess = pluginProcessOrError.Value();
@@ -236,7 +230,7 @@ private:
 
         if (!acquiredProcess) {
             YT_LOG_ERROR("Standby processes queue has been shutdown; Can't acquire process for query (QueryId: %v)", queryId);
-            return nullptr;
+            THROW_ERROR_EXCEPTION("Standby processes queue has been shutdown; Can't acquire process for query");
         }
 
         auto guard = NThreading::WriterGuard(ProcessesLock_);
@@ -268,7 +262,7 @@ private:
         return RunningYqlQueries_[queryId];
     }
 
-    void CleanupAfterQueryFinish(std::optional<TQueryId> queryId)
+    void CleanupAfterProcessFinish(std::optional<TQueryId> queryId)
     {
         auto guard = NThreading::WriterGuard(ProcessesLock_);
         if (queryId) {
@@ -280,12 +274,12 @@ private:
 
     void CheckProcessIsActive(TYqlExecutorProcessPtr process, TGuid queryId)
     {
+        YT_ASSERT_INVOKER_AFFINITY(Invoker_);
         if (process->ActiveQueryId()) {
             return;
         }
         YT_LOG_WARNING("Query did not start after acquiring process; Restarting process (SlotIndex: %v, QueryId: %v)", process->SlotIndex(), queryId);
         process->Stop();
-        CleanupAfterQueryFinish(queryId);
     }
 
     void StartPluginInProcess(TYqlExecutorProcessPtr process)
@@ -318,10 +312,10 @@ private:
         StandbyProcessesQueue_.Push(process);
         StandbyProcessesGauge_.Update(StandbyProcessesQueue_.Size());
 
-        process->SubscribeOnFinish(
+        process->SubscribeToProcessFinish(
             BIND([slotIndex, process, this](const TErrorOr<void> result) {
                 YT_LOG_DEBUG(result, "Process finished (SlotIndex: %v)", slotIndex);
-                CleanupAfterQueryFinish(process->ActiveQueryId());
+                CleanupAfterProcessFinish(process->ActiveQueryId());
                 YT_UNUSED_FUTURE(StartPluginProcess(slotIndex));
             }).Via(Invoker_));
 
@@ -331,24 +325,19 @@ private:
     void OnQueryFinish(TQueryId queryId, TYqlExecutorProcessPtr process)
     {
         YT_LOG_DEBUG("Query finished, cleaning up and restarting process (QueryId: %v, SlotIndex: %v)", queryId, process->SlotIndex());
-        CleanupAfterQueryFinish(queryId);
         process->Stop();
     }
 
     void InitializeProcessPool()
     {
-        try {
-            YT_LOG_INFO("Initializing process pool");
-            std::vector<TFuture<void>> futures;
-            for (int i = 0; i < Config_->ProcessPluginConfig->SlotCount; ++i) {
-                futures.emplace_back(StartPluginProcess(i));
-            }
-
-            WaitFor(AllSucceeded(futures)).ThrowOnError();
-            YT_LOG_INFO("Process pool initialized");
-        } catch (std::exception e) {
-            YT_LOG_ERROR(e, "Failed to initialize");
+        YT_LOG_INFO("Initializing process pool");
+        std::vector<TFuture<void>> futures;
+        for (int i = 0; i < Config_->ProcessPluginConfig->SlotCount; ++i) {
+            futures.emplace_back(StartPluginProcess(i));
         }
+
+        WaitFor(AllSucceeded(futures)).ThrowOnError();
+        YT_LOG_INFO("Process pool initialized");
     }
 
     TFuture<void> StartPluginProcess(int slotIndex)
@@ -495,7 +484,7 @@ private:
 
     void InitializeDqControllerYqlPlugin(TSingletonsConfigPtr singletonsConfig, std::string maxSupportedYqlVersion)
     {
-        TYqlPluginOptions options = ConvertToOptions(
+        TYqlPluginOptions options = CreateOptions(
             Config_,
             ConvertToYsonString(singletonsConfig),
             NYT::NLogging::CreateArcadiaLogBackend(NLogging::TLogger("YqlPlugin")),

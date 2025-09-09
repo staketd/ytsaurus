@@ -20,6 +20,8 @@ namespace NYT::NYqlPlugin {
 
 using TQueryId = TGuid;
 
+////////////////////////////////////////////////////////////////////////////////
+
 struct TYqlPluginOptions
 {
     NYson::TYsonString SingletonsConfig;
@@ -121,12 +123,12 @@ struct IYqlPlugin
 
 ////////////////////////////////////////////////////////////////////////////////
 
-TYqlPluginOptions ConvertToOptions(
+TYqlPluginOptions CreateOptions(
     TYqlPluginConfigPtr config,
     NYson::TYsonString singletonsConfigString,
     THolder<TLogBackend> logBackend,
     std::string maxSupportedYqlVersion,
-    bool startDqManager = false);
+    bool startDqManager);
 
 ////////////////////////////////////////////////////////////////////////////////
 

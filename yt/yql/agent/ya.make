@@ -46,8 +46,6 @@ PEERDIR(
 
     yt/yql/plugin
 
-    yt/yt/library/query/engine
-    yt/yt/library/query/row_comparer
     yt/yt/library/monitoring
 
     yt/yql/plugin/bridge

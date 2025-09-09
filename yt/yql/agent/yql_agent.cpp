@@ -279,7 +279,7 @@ public:
         NYql::FormatLangVersion(std::min(NYql::GetMaxReleasedLangVersion(), maxYqlLangVersion), buffer, defaultVersionStringBuf);
         DefaultYqlUILangVersion_ = defaultVersionStringBuf;
         YT_LOG_INFO("Deafult YQL version for UI is set (Version: %v)", DefaultYqlUILangVersion_);
-        auto options = NYqlPlugin::ConvertToOptions(
+        auto options = NYqlPlugin::CreateOptions(
             Config_,
             singletonsConfigString,
             NYT::NLogging::CreateArcadiaLogBackend(TLogger("YqlPlugin")),
@@ -605,9 +605,10 @@ private:
 
     void BuildOrchid(NYson::IYsonConsumer* consumer) const
     {
-        BuildYsonFluently(consumer).BeginMap()
-            .Item("yql_plugin").Value(YqlPlugin_->GetOrchidNode())
-        .EndMap();
+        BuildYsonFluently(consumer)
+            .BeginMap()
+                .Item("yql_plugin").Value(YqlPlugin_->GetOrchidNode())
+            .EndMap();
     }
 };
 

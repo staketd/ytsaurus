@@ -69,6 +69,7 @@ void TDqManager::Start()
         ConvertToYsonString(Config_->YtCoordinator),
         NYson::ReflectProtobufMessageType<NYql::NProto::TDqConfig::TYtCoordinator>(),
         protobufWriterOptions));
+
     auto threads = Config_->ActorThreads;
     auto interconnectPort = Config_->InterconnectPort;
     auto grpcPort = Config_->GrpcPort;

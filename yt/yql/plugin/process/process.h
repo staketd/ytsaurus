@@ -52,7 +52,7 @@ public:
     void OnDynamicConfigChanged(TYqlPluginDynamicConfig config) override;
 
     void Stop();
-    void SubscribeOnFinish(TCallback<void (const TErrorOr<void>&)> callback);
+    void SubscribeToProcessFinish(TCallback<void (const TErrorOr<void>&)> callback);
 
     bool WaitReady();
 

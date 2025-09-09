@@ -4,8 +4,6 @@
 
 #include <yt/yt/server/lib/cypress_election/public.h>
 
-#include <yt/yt/server/lib/misc/config.h>
-
 #include <yt/yt/server/lib/component_state_checker/public.h>
 
 #include <yt/yt/ytlib/api/native/public.h>
@@ -30,7 +28,6 @@
 #include <yt/yt/core/rpc/public.h>
 
 #include <yt/yt/core/ytree/public.h>
-
 
 namespace NYT::NYqlAgent {
 

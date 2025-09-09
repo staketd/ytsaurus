@@ -14,7 +14,7 @@ NYTree::IMapNodePtr IYqlPlugin::GetOrchidNode() const
 
 ////////////////////////////////////////////////////////////////////////////////
 
-TYqlPluginOptions ConvertToOptions(
+TYqlPluginOptions CreateOptions(
     TYqlPluginConfigPtr config,
     TYsonString singletonsConfigString,
     THolder<TLogBackend> logBackend,

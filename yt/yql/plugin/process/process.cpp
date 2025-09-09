@@ -169,7 +169,8 @@ TQueryResult TYqlExecutorProcess::GetProgress(TQueryId queryId)
 
 ////////////////////////////////////////////////////////////////////////////////
 
-TAbortResult TYqlExecutorProcess::Abort(TQueryId queryId) {
+TAbortResult TYqlExecutorProcess::Abort(TQueryId queryId)
+{
     YT_LOG_INFO("Aborting query (SlotIndex: %v, QueryId: %v)", SlotIndex_, queryId);
     auto abortQueryReq = PluginProxy_.AbortQuery();
     ToProto(abortQueryReq->mutable_query_id(), queryId);
@@ -190,7 +191,8 @@ TAbortResult TYqlExecutorProcess::Abort(TQueryId queryId) {
 ////////////////////////////////////////////////////////////////////////////////
 
 template<typename T, typename R>
-T TYqlExecutorProcess::ToErrorResponse(const TFormatString<>& errorMessage, const TErrorOr<R>& response) const {
+T TYqlExecutorProcess::ToErrorResponse(const TFormatString<>& errorMessage, const TErrorOr<R>& response) const
+{
     TError error = TError(errorMessage)
         << response
         << TErrorAttribute("slot_index", SlotIndex_);
@@ -202,31 +204,36 @@ T TYqlExecutorProcess::ToErrorResponse(const TFormatString<>& errorMessage, cons
 
 ////////////////////////////////////////////////////////////////////////////////
 
-int TYqlExecutorProcess::SlotIndex() const {
+int TYqlExecutorProcess::SlotIndex() const
+{
     return SlotIndex_;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
-int TYqlExecutorProcess::DynamicConfigVersion() const {
+int TYqlExecutorProcess::DynamicConfigVersion() const
+{
     return DynamicConfigVersion_;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
-void TYqlExecutorProcess::OnDynamicConfigChanged(TYqlPluginDynamicConfig /*config*/) {
-    // do nothing
+void TYqlExecutorProcess::OnDynamicConfigChanged(TYqlPluginDynamicConfig /*config*/)
+{
+    // do nothing, config is changed on process start
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
-void TYqlExecutorProcess::Start() {
-    // do nothing
+void TYqlExecutorProcess::Start()
+{
+    // do nothing, start is called on process start
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
-void TYqlExecutorProcess::Stop() {
+void TYqlExecutorProcess::Stop()
+{
     if (ActiveQueryId_) {
         Abort(*ActiveQueryId_);
     }
@@ -235,13 +242,15 @@ void TYqlExecutorProcess::Stop() {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-void TYqlExecutorProcess::SubscribeOnFinish(TCallback<void (const TErrorOr<void>& )> callback) {
+void TYqlExecutorProcess::SubscribeToProcessFinish(TCallback<void (const TErrorOr<void>& )> callback)
+{
     ProcessFinishFuture_.Subscribe(callback);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TYqlExecutorProcess::WaitReady() {
+bool TYqlExecutorProcess::WaitReady()
+{
     // Here we are waiting for rpc server inside started subprocess to be ready to accept calls.
     YT_LOG_DEBUG("Waiting for process to be ready (SlotIndex: %v)", SlotIndex_);
     return DoWithRetry<std::exception>(
@@ -255,14 +264,16 @@ bool TYqlExecutorProcess::WaitReady() {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-std::optional<TQueryId> TYqlExecutorProcess::ActiveQueryId() const {
+std::optional<TQueryId> TYqlExecutorProcess::ActiveQueryId() const
+{
     auto guard = Guard(ActiveQueryIdLock_);
     return ActiveQueryId_;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
-void TYqlExecutorProcess::CheckReady() {
+void TYqlExecutorProcess::CheckReady()
+{
     Y_ENSURE(NFS::Exists(UnixSocketPath_), "Unix socket must exist for process to be ready");
 }
 

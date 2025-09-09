@@ -56,7 +56,7 @@ public:
     void Start();
 
 private:
-    TDqManagerConfigPtr Config_;
+    const TDqManagerConfigPtr& Config_;
 
     NActors::TActorSystem* ActorSystem_;
     ICoordinationHelper::TPtr Coordinator_;
