@@ -531,37 +531,41 @@ int TCube<T>::ReadSensors(
             writeLabels(tagIds, nameLabel, ESummaryPolicy::Sum);
 
             rangeValues([&, window = &window] (auto value, auto time, const auto& indices) {
-                size_t n = value.Bounds.size();
+                auto useRateDenominator = (options.ConvertCountersToRateGauge || options.EnableHistogramCompat);
+                auto histogramSnapshot = useRateDenominator
+                    ? value 
+                    : Rollup(*window, indices.back());
+                
+                size_t n = histogramSnapshot.Bounds.size();
                 auto hist = NMonitoring::TExplicitHistogramSnapshot::New(n + 1);
 
-                if (options.ConvertCountersToRateGauge || options.EnableHistogramCompat) {
+                if (useRateDenominator) {
                     if (options.RateDenominator < 0.1) {
                         THROW_ERROR_EXCEPTION("Invalid rate denominator");
                     }
 
                     for (size_t i = 0; i < n; ++i) {
-                        auto bucketValue = i < value.Values.size() ? value.Values[i] : 0u;
+                        auto bucketValue = i < histogramSnapshot.Values.size() ? histogramSnapshot.Values[i] : 0u;
 
-                        (*hist)[i] = {value.Bounds[i], bucketValue / options.RateDenominator};
+                        (*hist)[i] = {histogramSnapshot.Bounds[i], bucketValue / options.RateDenominator};
                     }
 
                     // Add inf.
-                    (*hist)[n] = {Max<NMonitoring::TBucketBound>(), n < value.Values.size() ? (value.Values[n] / options.RateDenominator) : 0u};
+                    (*hist)[n] = {Max<NMonitoring::TBucketBound>(), n < histogramSnapshot.Values.size() ? (histogramSnapshot.Values[n] / options.RateDenominator) : 0u};
                 } else {
-                    auto rollup = Rollup(*window, indices.back());
-
                     for (size_t i = 0; i < n; ++i) {
-                        auto bucketValue = i < rollup.Values.size() ? rollup.Values[i] : 0u;
-                        (*hist)[i] = {rollup.Bounds[i], bucketValue};
+                        auto bucketValue = i < histogramSnapshot.Values.size() ? histogramSnapshot.Values[i] : 0u;
+                        (*hist)[i] = {histogramSnapshot.Bounds[i], bucketValue};
                     }
 
                     // Add inf.
-                    (*hist)[n] = {Max<NMonitoring::TBucketBound>(), n < rollup.Values.size() ? (rollup.Values[n]) : 0u};
+                    (*hist)[n] = {Max<NMonitoring::TBucketBound>(), n < histogramSnapshot.Values.size() ? (histogramSnapshot.Values[n]) : 0u};
                 }
 
                 sensorCount = n + 1;
 
                 consumer->OnHistogram(time, hist);
+
             });
 
             consumer->OnMetricEnd();
